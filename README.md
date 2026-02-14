@@ -42,9 +42,10 @@ config0
 
 Output naming
 - photos/<file_prefix>/<file_prefix>_<x>_<y>_<direction>_<eye>.png
-- Directions at non-corner cells: north, east, south, west
-- Directions at corner cells (0,0), (10,0), (0,10), (10,10): NE, SE, SW, NW
-- Example: photos/config0/config0_5_5_north_left.png
+- Directions at non-corner cells: north (0), east (1), south (2), west (3)
+- Directions at corner cells (1,1), (11,1), (1,11), (11,11): NE (0), SE (1), SW (2), NW (3)
+- Eye: left (l), right (r)
+- Example: photos/config0/config0_5_5_0_l.png
 
 Setup and run (For Fusion version 2604.1.25)
 1. Make sure to have CaptureView folder on your computer and that it contains the fusion manifest file.

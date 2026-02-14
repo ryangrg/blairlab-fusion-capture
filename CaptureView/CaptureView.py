@@ -13,10 +13,6 @@ GRID_Z_IN = 33.577
 EYE_RAISE_IN = 2.5
 EYE_Z_IN = GRID_Z_IN + EYE_RAISE_IN
 
-# Grid bounds (0-based indices).
-GRID_MIN = 0
-GRID_MAX = 10
-
 # Eye and camera parameters
 EYE_SEPARATION_IN = 0.5  # total separation
 HALF_BASE_IN = EYE_SEPARATION_IN / 2.0
@@ -32,23 +28,22 @@ IMG_H = 128
 # Axes are swapped per provided data:
 #   model X comes from grid y; model Y comes from grid x
 X_FROM_GRID_Y_IN = {
-    0: 8.039,
-    1: 16.336,
-    5: 55.519,
-    9: 94.702,
-    10: 102.999,
+    1: 8.039,
+    2: 16.336,
+    6: 55.519,
+    10: 94.702,
+    11: 102.999,
 }
 Y_FROM_GRID_X_IN = {
-    0: 6.02,
-    1: 14.317,
-    5: 53.50,
-    9: 92.683,
-    10: 100.98,
+    1: 6.02,
+    2: 14.317,
+    6: 53.50,
+    10: 92.683,
+    11: 100.98,
 }
 
 
 def _interp_linear(index: int, knot_map: dict) -> float:
-    """Retrieve a value for a grid index using linear interpolation between knots."""
     if index in knot_map:
         return knot_map[index]
     keys = sorted(knot_map.keys())
@@ -70,7 +65,6 @@ def _interp_linear(index: int, knot_map: dict) -> float:
 
 
 def grid_to_model_in(gx: int, gy: int):
-    """Map integer grid coordinates to the corresponding model-space point in inches."""
     # inches
     mx = _interp_linear(gy, X_FROM_GRID_Y_IN)  # swap axes
     my = _interp_linear(gx, Y_FROM_GRID_X_IN)
@@ -79,12 +73,10 @@ def grid_to_model_in(gx: int, gy: int):
 
 
 def inches_to_cm(x_in: float) -> float:
-    """Convert an inch measurement to centimeters."""
     return x_in * CM_PER_IN
 
 
 def rot2d(vx: float, vy: float, deg: float):
-    """Rotate a 2D vector by the specified number of degrees."""
     rad = math.radians(deg)
     c = math.cos(rad)
     s = math.sin(rad)
@@ -92,7 +84,6 @@ def rot2d(vx: float, vy: float, deg: float):
 
 
 def norm2d(vx: float, vy: float):
-    """Normalize a 2D vector, returning the zero vector when magnitude is tiny."""
     mag = math.hypot(vx, vy)
     if mag <= 1e-9:
         return (0.0, 0.0)
@@ -100,22 +91,14 @@ def norm2d(vx: float, vy: float):
 
 
 def is_corner(gx: int, gy: int) -> bool:
-    """Return True when the grid coordinate lies on a corner of the capture area."""
-    return (gx in (GRID_MIN, GRID_MAX)) and (gy in (GRID_MIN, GRID_MAX))
-
-
-def rotate_grid_cw(gx: int, gy: int, max_idx: int = GRID_MAX):
-    """Rotate grid coordinates 90° CW around the grid center."""
-    return (max_idx - gy, gx)
+    return (gx in (0, 10)) and (gy in (0, 10))
 
 
 def ensure_dir(path: str):
-    """Create the directory if it does not already exist."""
     os.makedirs(path, exist_ok=True)
 
 
 def parse_positions_txt(script_dir: str):
-    """Load the image prefix and grid positions from the companion positions.txt file."""
     path = os.path.join(script_dir, "positions.txt")
     prefix = None
     positions = []
@@ -142,7 +125,6 @@ def parse_positions_txt(script_dir: str):
 
 
 def switch_to_render_workspace() -> bool:
-    """Activate Fusion's render workspace so subsequent operations target Render tools."""
     app = adsk.core.Application.get()
     ui = app.userInterface
     ws = ui.workspaces.itemById("FusionRenderEnvironment")
@@ -215,7 +197,6 @@ def set_camera_and_render(
     v_fov_deg: float,
     out_path: str,
 ):
-    """Position the viewport camera, configure render settings, and capture an image."""
     vp = app.activeViewport
     cam = vp.camera
     cam.isSmoothTransition = False
@@ -245,7 +226,6 @@ def set_camera_and_render(
 
 
 def run(context):
-    """Drive the capture workflow by parsing positions and rendering stereo images."""
     app = adsk.core.Application.get()
     ui = app.userInterface if app else None
     try:
@@ -261,17 +241,17 @@ def run(context):
         switch_to_render_workspace()
 
         # Precompute base direction vectors using provided definition:
-        # North = (5,5) -> (5,0), East = (5,5) -> (10,5)
+        # North = (6,6) -> (11,6), East = (6,6) -> (6,11)
         def model_xy_cm(gx, gy):
             mx_in, my_in, _ = grid_to_model_in(gx, gy)
             return inches_to_cm(mx_in), inches_to_cm(my_in)
 
-        p_55 = model_xy_cm(5, 5)
-        p_50 = model_xy_cm(5, 0)
-        p_105 = model_xy_cm(10, 5)
+        p_66 = model_xy_cm(6, 6)
+        p_116 = model_xy_cm(11, 6)
+        p_611 = model_xy_cm(6, 11)
 
-        north2 = (p_50[0] - p_55[0], p_50[1] - p_55[1])
-        east2 = (p_105[0] - p_55[0], p_105[1] - p_55[1])
+        north2 = (p_116[0] - p_66[0], p_116[1] - p_66[1])
+        east2 = (p_611[0] - p_66[0], p_611[1] - p_66[1])
 
         north2 = norm2d(*north2)
         east2 = norm2d(*east2)
@@ -279,43 +259,31 @@ def run(context):
         west2 = (-east2[0], -east2[1])
 
         # Diagonals (normalized)
-        north_vec = east2
-        east_vec = south2
-        south_vec = west2
-        west_vec = north2
+        ne2 = norm2d(*(north2[0] + east2[0], north2[1] + east2[1]))
+        se2 = norm2d(*(south2[0] + east2[0], south2[1] + east2[1]))
+        sw2 = norm2d(*(south2[0] + west2[0], south2[1] + west2[1]))
+        nw2 = norm2d(*(north2[0] + west2[0], north2[1] + west2[1]))
 
-        ne_vec = norm2d(*(north_vec[0] + east_vec[0], north_vec[1] + east_vec[1]))
-        se_vec = norm2d(*(south_vec[0] + east_vec[0], south_vec[1] + east_vec[1]))
-        sw_vec = norm2d(*(south_vec[0] + west_vec[0], south_vec[1] + west_vec[1]))
-        nw_vec = norm2d(*(north_vec[0] + west_vec[0], north_vec[1] + west_vec[1]))
-
+        # 0 = North, 1 = East, 2 = South, 3 = West
+        # 0 = NE, 1 = SE, 2 = SW, 3 = NW
+        # using the same naming convention for directions because minigrid has no intermidate directions
+        # the cornershave intermeidiate directions mapped from the render.
         dirs_cardinal = [
-            ("n", north_vec),
-            ("e", east_vec),
-            ("s", south_vec),
-            ("w", west_vec),
+            ("0", north2),
+            ("1", east2),
+            ("2", south2),
+            ("3", west2),
         ]
+        # Use NE, SE, SW, NW at corners
         dirs_diagonal = [
-            ("ne", ne_vec),
-            ("se", se_vec),
-            ("sw", sw_vec),
-            ("nw", nw_vec),
+            ("0", ne2),
+            ("1", se2),
+            ("2", sw2),
+            ("3", nw2),
         ]
 
         # Capture for each requested grid position
-        for (gx_in, gy_in) in positions:
-            # Accept 1-based grid inputs and convert to the original 0-based grid.
-            # This is to align with minigrid coordinates to some extent. Minigrid also
-            # flips x y positions in pose use with gymnasium.
-            gx = gx_in - 1
-            gy = gy_in - 1
-            if not (GRID_MIN <= gx <= GRID_MAX and GRID_MIN <= gy <= GRID_MAX):
-                raise RuntimeError(
-                    f"Grid coordinate ({gx_in}, {gy_in}) is outside the valid 1-11 range."
-                )
-            # Rotate +90° so NE becomes NW; directions are already aligned to match.
-            gx, gy = rotate_grid_cw(gx, gy)
-
+        for (gx, gy) in positions:
             # Center position (cm)
             mx_in, my_in, _ = grid_to_model_in(gx, gy)
             cx = inches_to_cm(mx_in)
@@ -361,7 +329,7 @@ def run(context):
                     left_eye_xy[0], left_eye_xy[1], cz
                 )
                 left_file = os.path.join(
-                    out_dir, f"{prefix}_{gx_in}_{gy_in}_{dir_name}_l.png"
+                    out_dir, f"{prefix}_{gx}_{gy}_{dir_name}_l.png"
                 )
                 set_camera_and_render(
                     app, left_eye_pt, left_fwd3, VFOV_DEG, left_file
@@ -372,7 +340,7 @@ def run(context):
                     right_eye_xy[0], right_eye_xy[1], cz
                 )
                 right_file = os.path.join(
-                    out_dir, f"{prefix}_{gx_in}_{gy_in}_{dir_name}_r.png"
+                    out_dir, f"{prefix}_{gx}_{gy}_{dir_name}_r.png"
                 )
                 set_camera_and_render(
                     app, right_eye_pt, right_fwd3, VFOV_DEG, right_file
@@ -392,6 +360,5 @@ def run(context):
 
 
 def stop(context):
-    """Entry point invoked on script stop; provided for Fusion's API completeness."""
     # No persistent UI to clean up in this simple script
     pass

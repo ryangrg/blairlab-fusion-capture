@@ -1,0 +1,18 @@
+.vscode
+photos
+.DS_Store
+testqedgit-rabqu3-qicQed
+
+# Image files
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tiff
+*.svg
+
+# Directories with image data
+test/
+config-files/
+config-files-update/

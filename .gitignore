@@ -16,3 +16,6 @@ testqedgit-rabqu3-qicQed
 test/
 config-files/
 config-files-update/
+
+# Doc files
+render-map-fusion-maze.xlsx

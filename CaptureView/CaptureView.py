@@ -26,7 +26,7 @@ IMG_H = 128
 
 # Mapping from grid indices to model coordinates (inches)
 # Axes are swapped per provided data:
-#   model X comes from grid y; model Y comes from grid x
+# model X comes from grid y; model Y comes from grid x
 X_FROM_GRID_Y_IN = {
     1: 8.039,
     2: 16.336,
@@ -247,11 +247,11 @@ def run(context):
             return inches_to_cm(mx_in), inches_to_cm(my_in)
 
         p_66 = model_xy_cm(6, 6)
+        p_61 = model_xy_cm(6, 1)
         p_116 = model_xy_cm(11, 6)
-        p_611 = model_xy_cm(6, 11)
 
-        north2 = (p_116[0] - p_66[0], p_116[1] - p_66[1])
-        east2 = (p_611[0] - p_66[0], p_611[1] - p_66[1])
+        north2 = (p_61[0] - p_66[0], p_61[1] - p_66[1])
+        east2 = (p_116[0] - p_66[0], p_116[1] - p_66[1])
 
         north2 = norm2d(*north2)
         east2 = norm2d(*east2)
@@ -269,10 +269,10 @@ def run(context):
         # using the same naming convention for directions because minigrid has no intermidate directions
         # the cornershave intermeidiate directions mapped from the render.
         dirs_cardinal = [
-            ("0", north2),
-            ("1", east2),
-            ("2", south2),
-            ("3", west2),
+            ("3", north2),
+            ("0", east2),
+            ("1", south2),
+            ("2", west2),
         ]
         # Use NE, SE, SW, NW at corners
         dirs_diagonal = [
